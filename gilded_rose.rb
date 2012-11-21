@@ -2,65 +2,104 @@ require './item.rb'
 
 class GildedRose
 
-  @items = []
+  attr_reader :items
+
+  ITEMS = {
+    "+5 Dexterity Vest" => {:sell_in => 10, :quality => 20},
+    "Aged Brie" => {:sell_in => 2, :quality => 0},
+    "Elixir of the Mongoose" => {:sell_in => 5, :quality => 7},
+    "Sulfuras, Hand of Ragnaros" => {:sell_in => 0, :quality => 80},
+    "Backstage passes to a TAFKAL80ETC concert" => {:sell_in => 15, :quality => 20},
+    "Conjured Mana Cake" => {:sell_in => 3, :quality => 6}
+  }
 
   def initialize
     @items = []
-    @items << Item.new("+5 Dexterity Vest", 10, 20)
-    @items << Item.new("Aged Brie", 2, 0)
-    @items << Item.new("Elixir of the Mongoose", 5, 7)
-    @items << Item.new("Sulfuras, Hand of Ragnaros", 0, 80)
-    @items << Item.new("Backstage passes to a TAFKAL80ETC concert", 15, 20)
-    @items << Item.new("Conjured Mana Cake", 3, 6)
+    ITEMS.each do |item_name, item_attributes|
+      @items << Item.new(item_name, item_attributes[:sell_in], item_attributes[:quality])
+    end
+  end
+  
+  def strategy_for(item)
+	if item.name == "Aged Brie"
+		aged_brie = AgedBrieStrategy.new(item)
+	elsif item.name == "Backstage passes to a TAFKAL80ETC concert"
+		backstage_passes = BackstagePassStrategy.new(item)
+	elsif item.name == "Conjured Mana Cake"
+		conjured = ConjuredStrategy.new(item)
+	else
+		normal = NormalStrategy.new(item)
+	end
   end
 
   def update_quality
-
-    for i in 0..(@items.size-1)
-      if (@items[i].name != "Aged Brie" && @items[i].name != "Backstage passes to a TAFKAL80ETC concert")
-        if (@items[i].quality > 0)
-          if (@items[i].name != "Sulfuras, Hand of Ragnaros")
-            @items[i].quality = @items[i].quality - 1
-          end
-        end
-      else
-        if (@items[i].quality < 50)
-          @items[i].quality = @items[i].quality + 1
-          if (@items[i].name == "Backstage passes to a TAFKAL80ETC concert")
-            if (@items[i].sell_in < 11)
-              if (@items[i].quality < 50)
-                @items[i].quality = @items[i].quality + 1
-              end
-            end
-            if (@items[i].sell_in < 6)
-              if (@items[i].quality < 50)
-                @items[i].quality = @items[i].quality + 1
-              end
-            end
-          end
-        end
-      end
-      if (@items[i].name != "Sulfuras, Hand of Ragnaros")
-        @items[i].sell_in = @items[i].sell_in - 1;
-      end
-      if (@items[i].sell_in < 0)
-        if (@items[i].name != "Aged Brie")
-          if (@items[i].name != "Backstage passes to a TAFKAL80ETC concert")
-            if (@items[i].quality > 0)
-              if (@items[i].name != "Sulfuras, Hand of Ragnaros")
-                @items[i].quality = @items[i].quality - 1
-              end
-            end
-          else
-            @items[i].quality = @items[i].quality - @items[i].quality
-          end
-        else
-          if (@items[i].quality < 50)
-            @items[i].quality = @items[i].quality + 1
-          end
-        end
-      end
+	non_legendary_items.each do |item|
+	strategy = strategy_for(item)
+	strategy.update(item) if strategy
+	item.sell_in -= 1
     end
   end
 
+  def non_legendary_items
+    @items.select do |item|
+      item.name != "Sulfuras, Hand of Ragnaros"
+    end
+  end
+end
+
+class NormalStrategy
+
+	def initialize(item)
+	end
+
+	def update(item)
+		item.quality -= 1
+		item.quality -= 1 if item.sell_in <= 0
+		item.quality = 0 if item.quality < 0
+	end
+
+end
+
+class AgedBrieStrategy
+
+	def initialize(item)
+	end
+	
+	def update(item)
+        item.quality += 1
+		item.quality = 50 if item.quality > 50
+	end
+
+end
+
+class BackstagePassStrategy
+
+	def initialize(item)
+	end
+	
+	def update(item)
+		if item.sell_in <= 0
+			item.quality = 0 
+		elsif item.sell_in > 10
+			item.quality += 1
+		elsif item.sell_in > 5
+			item.quality += 2
+		elsif item.sell_in <= 5
+			item.quality += 3
+		end
+	end
+
+end
+
+class ConjuredStrategy
+
+	def initialize(item)
+	end
+	
+	def update(item)
+		item.quality -= 2
+		item.quality -= 1 if item.sell_in < 0
+		item.quality = 0 if item.quality < 0
+	end
+	
 end
